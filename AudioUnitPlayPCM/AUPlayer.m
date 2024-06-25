@@ -18,7 +18,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 @implementation AUPlayer
 {
     AudioUnit audioUnit;
-    AudioBufferList *audioBufferList;
+    AudioBufferList *audioBufferList; // 音频的缓存数据结构
     NSInputStream *inputSteam;
 }
 
@@ -26,16 +26,6 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
 {
     [self initPlayer];
     AudioOutputUnitStart(audioUnit);
-}
-
-- (Float64)getCurrentTime
-{
-    Float64 timeInterval = 0;
-    if (inputSteam)
-    {
-        
-    }
-    return timeInterval;
 }
 
 - (void)initPlayer
@@ -49,37 +39,36 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
         NSLog(@"failed to open file: %@", url);
         return;
     }
-    
+    // open stream
     [inputSteam open];
+    // init buffer
+    audioBufferList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
+    audioBufferList->mNumberBuffers = 1; // AudioBuffer 的数量
+    audioBufferList->mBuffers[0].mNumberChannels = 1; // 声道数
+    audioBufferList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
+    audioBufferList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
     self.sampleRate = 44100.0;
     NSError *audioSessionError = nil;
     OSStatus status = noErr;
     
     // set audio session
-    // 获取 audio session 单例对象
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayback error:&audioSessionError];
     [audioSession setActive: YES error: &audioSessionError];
     self.sampleRate = [audioSession currentHardwareSampleRate];
     NSLog(@"Current Hardware sample rate: %f", self.sampleRate);
     
+    // create an audio component description to identify an audio unit
     AudioComponentDescription audioDesc;
     audioDesc.componentType = kAudioUnitType_Output;
     audioDesc.componentSubType = kAudioUnitSubType_RemoteIO;
     audioDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
     audioDesc.componentFlags = 0;
     audioDesc.componentFlagsMask = 0;
-    
+    // obtain an audio unit instance using the audio unit API
     AudioComponent inputComponent = AudioComponentFindNext(NULL, &audioDesc);
     AudioComponentInstanceNew(inputComponent, &audioUnit);
-    
-    // buffer
-    audioBufferList = (AudioBufferList *)malloc(sizeof(AudioBufferList));
-    audioBufferList->mNumberBuffers = 1;
-    audioBufferList->mBuffers[0].mNumberChannels = 1;
-    audioBufferList->mBuffers[0].mDataByteSize = CONST_BUFFER_SIZE;
-    audioBufferList->mBuffers[0].mData = malloc(CONST_BUFFER_SIZE);
     
     // audio property
     UInt32 flag = 1;
@@ -98,8 +87,8 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     }
     
     // output format
-    AudioStreamBasicDescription outputFormat;
-    memset(&outputFormat, 0, sizeof(outputFormat));
+    AudioStreamBasicDescription outputFormat = {0};
+    // memset(&outputFormat, 0, sizeof(outputFormat));
     outputFormat.mSampleRate = self.sampleRate; // 采样率
     outputFormat.mFormatID = kAudioFormatLinearPCM; // PCM 格式
     outputFormat.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger; // 整形
@@ -109,7 +98,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
     outputFormat.mBytesPerPacket = 2; // 每个 Packet 只有 2 个 byte
     outputFormat.mBitsPerChannel = 16; // 位深
     [self printAudioStreamBasicDescription:outputFormat];
-
+    
     status = AudioUnitSetProperty(audioUnit,
                                   kAudioUnitProperty_StreamFormat,
                                   kAudioUnitScope_Input,
@@ -121,7 +110,7 @@ const uint32_t CONST_BUFFER_SIZE = 0x10000;
         NSLog(@"Audio Unit set property eror with status: %d", status);
     }
     
-    // callback
+    // attach a render callback immediately
     AURenderCallbackStruct playCallback;
     playCallback.inputProc = PlayCallback;
     playCallback.inputProcRefCon = (__bridge void *)self;
@@ -146,8 +135,7 @@ static OSStatus PlayCallback(void *inRefCon,
     AUPlayer *player = (__bridge AUPlayer *)inRefCon;
     
     ioData->mBuffers[0].mDataByteSize =
-        (UInt32)[player->inputSteam read:ioData->mBuffers[0].mData
-                               maxLength:(NSInteger)ioData->mBuffers[0].mDataByteSize];
+        (UInt32)[player->inputSteam read:ioData->mBuffers[0].mData maxLength:(NSInteger)ioData->mBuffers[0].mDataByteSize];
     NSLog(@"output buffer size: %d", ioData->mBuffers[0].mDataByteSize);
     
     if (ioData->mBuffers[0].mDataByteSize <= 0)

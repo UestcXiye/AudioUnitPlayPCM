@@ -24,7 +24,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) float sampleRate;
 
 - (void)play;
-- (Float64)getCurrentTime;
 
 @end
 

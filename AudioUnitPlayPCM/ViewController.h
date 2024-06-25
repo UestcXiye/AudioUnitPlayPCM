@@ -9,9 +9,8 @@
 
 @interface ViewController : UIViewController
 
-@property (nonatomic , strong) UILabel  *label;
-@property (nonatomic , strong) UILabel *currentTimeLabel;
-@property (nonatomic , strong) UIButton *playButton;
+@property (nonatomic, strong) UILabel *label;
+@property (nonatomic, strong) UIButton *playButton;
 
 @end
 

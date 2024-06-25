@@ -29,18 +29,14 @@
     self.label.text = @"使用 Audio Unit 播放 PCM";
     self.label.translatesAutoresizingMaskIntoConstraints = NO;
         
-    self.currentTimeLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 100)];
-    self.currentTimeLabel.textColor = [UIColor grayColor];
-        
     self.playButton = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
     [self.playButton setTitle:@"play" forState:UIControlStateNormal];
     [self.playButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
     self.playButton.translatesAutoresizingMaskIntoConstraints = NO;
     
-    [self.playButton addTarget:self action:@selector(onDecodeStart) forControlEvents:UIControlEventTouchUpInside];
+    [self.playButton addTarget:self action:@selector(onPlayStart) forControlEvents:UIControlEventTouchUpInside];
     
     [self.view addSubview:self.label];
-    [self.view addSubview:self.currentTimeLabel];
     [self.view addSubview:self.playButton];
     
     /* 添加约束 */
@@ -55,10 +51,11 @@
     ]];
 }
 
-- (void)onDecodeStart
+- (void)onPlayStart
 {
     self.playButton.hidden = YES;
     player = [[AUPlayer alloc] init];
+    // AUPlayer delegate
     player.delegate = self;
     [player play];
 }
